@@ -19,7 +19,8 @@ package mytype
 import (
 	"context"
 	"fmt"
-
+	cc "github.com/camunda-community-hub/camunda-cloud-go-client/pkg/cc/client"
+	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	"github.com/pkg/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/util/workqueue"
@@ -136,6 +137,23 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 	// These fmt statements should be removed in the real implementation.
 	fmt.Printf("Observing: %+v", cr)
 
+	existing, err := cc.GetClusterByName(cr.Spec.ClusterName)
+
+	//if database.IsNotFound(err) {
+	if err != nil {
+		return managed.ExternalObservation{ResourceExists: false}, nil
+	}
+	cr.Status.ClusterId = existing.ID
+
+	switch cr.Status.ClusterStatus.Ready {
+	case "Healthy":
+		cr.SetConditions(xpv1.Available())
+	case "Creating":
+		cr.SetConditions(xpv1.Creating())
+	case "Not Healthy":
+		cr.SetConditions(xpv1.Unavailable())
+	}
+
 	return managed.ExternalObservation{
 		// Return false when the external resource does not exist. This lets
 		// the managed resource reconciler know that it needs to call Create to
@@ -160,6 +178,17 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 	}
 
 	fmt.Printf("Creating: %+v", cr)
+
+	clusterId, err := cc.CreateClusterDefault(mg.GetName())
+	if err != nil {
+		fmt.Errorf("failed to create zeebe cluster %s", err.Error())
+		return managed.ExternalCreation{}, err
+	}
+	fmt.Printf("Updating Zeebe Cluster with ClusterId: %s", clusterId)
+
+	cr.Status.ClusterId = clusterId
+
+	cr.SetConditions(xpv1.Creating())
 
 	return managed.ExternalCreation{
 		// Optionally return any details that may be required to connect to the
@@ -190,6 +219,14 @@ func (c *external) Delete(ctx context.Context, mg resource.Managed) error {
 	}
 
 	fmt.Printf("Deleting: %+v", cr)
+
+	deleted, err := cc.DeleteCluster(cr.Status.ClusterId)
+	if err != nil {
+		fmt.Printf("Failed to delete cluster: cluster not found %s", err)
+	}
+	if deleted {
+		fmt.Printf("Cluster in camunda cloud deleted: %s ", cr.Status.ClusterId)
+	}
 
 	return nil
 }

@@ -17,6 +17,7 @@ limitations under the License.
 package v1alpha1
 
 import (
+	cc "github.com/camunda-community-hub/camunda-cloud-go-client/pkg/cc/client"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
@@ -36,12 +37,15 @@ type MyTypeObservation struct {
 type MyTypeSpec struct {
 	xpv1.ResourceSpec `json:",inline"`
 	ForProvider       MyTypeParameters `json:"forProvider"`
+	ClusterName string `json:"clusterName"`
 }
 
 // A MyTypeStatus represents the observed state of a MyType.
 type MyTypeStatus struct {
 	xpv1.ResourceStatus `json:",inline"`
 	AtProvider          MyTypeObservation `json:"atProvider,omitempty"`
+	ClusterId string `json:"clusterId"`
+	ClusterStatus cc.ClusterStatus `json:"clusterStatus"`
 }
 
 // +kubebuilder:object:root=true
