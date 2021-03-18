@@ -1,0 +1,8 @@
+apiVersion: sample.template.crossplane.io/v1alpha1 
+kind: MyType
+metadata:
+  name: test
+spec:
+  clusterName: hello
+  forProvider:
+    configurableField: ""
