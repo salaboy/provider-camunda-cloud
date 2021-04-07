@@ -3,7 +3,7 @@ module github.com/crossplane/provider-template
 go 1.13
 
 require (
-	github.com/camunda-community-hub/camunda-cloud-go-client v0.0.33
+	github.com/camunda-community-hub/camunda-cloud-go-client v0.0.39
 	github.com/crossplane/crossplane-runtime v0.13.0
 	github.com/crossplane/crossplane-tools v0.0.0-20201201125637-9ddc70edfd0d
 	github.com/google/go-cmp v0.5.2

@@ -37,7 +37,14 @@ type MyTypeObservation struct {
 type MyTypeSpec struct {
 	xpv1.ResourceSpec `json:",inline"`
 	ForProvider       MyTypeParameters `json:"forProvider"`
-	ClusterName string `json:"clusterName"`
+	// +kubebuilder:validation:Optional
+	Region string `json:"region"`
+	// +kubebuilder:validation:Optional
+	ChannelName string `json:"channelName"`
+	// +kubebuilder:validation:Optional
+	GenerationName string `json:"generationName"`
+	// +kubebuilder:validation:Optional
+	PlanName string `json:"planName"`
 }
 
 // A MyTypeStatus represents the observed state of a MyType.

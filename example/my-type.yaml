@@ -3,6 +3,8 @@ kind: MyType
 metadata:
   name: test
 spec:
-  clusterName: hello
+  planName: "Development"
+  channelName: "Stable"
+  region: "Europe West 1D"
   forProvider:
     configurableField: ""
