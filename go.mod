@@ -1,4 +1,4 @@
-module github.com/crossplane/provider-template
+module github.com/salaboy/provider-camunda-cloud
 
 go 1.13
 

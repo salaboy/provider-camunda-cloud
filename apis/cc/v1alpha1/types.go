@@ -33,8 +33,8 @@ type MyTypeObservation struct {
 	ObservableField string `json:"observableField,omitempty"`
 }
 
-// A MyTypeSpec defines the desired state of a MyType.
-type MyTypeSpec struct {
+// A ZeebeClusterSpec defines the desired state of a ZeebeCluster.
+type ZeebeClusterSpec struct {
 	xpv1.ResourceSpec `json:",inline"`
 	ForProvider       MyTypeParameters `json:"forProvider"`
 	// +kubebuilder:validation:Optional
@@ -47,8 +47,8 @@ type MyTypeSpec struct {
 	PlanName string `json:"planName"`
 }
 
-// A MyTypeStatus represents the observed state of a MyType.
-type MyTypeStatus struct {
+// A ZeebeClusterStatus represents the observed state of a ZeebeCluster.
+type ZeebeClusterStatus struct {
 	xpv1.ResourceStatus `json:",inline"`
 	AtProvider          MyTypeObservation `json:"atProvider,omitempty"`
 	ClusterId string `json:"clusterId"`
@@ -56,27 +56,28 @@ type MyTypeStatus struct {
 }
 
 // +kubebuilder:object:root=true
-
-// A MyType is an example API type
+// A ZeebeCluster is a remote ZeebeCluster in Camunda Cloud API type
 // +kubebuilder:subresource:status
-// +kubebuilder:printcolumn:name="STATUS",type="string",JSONPath=".status.bindingPhase"
-// +kubebuilder:printcolumn:name="STATE",type="string",JSONPath=".status.atProvider.state"
-// +kubebuilder:printcolumn:name="CLASS",type="string",JSONPath=".spec.classRef.name"
+// +kubebuilder:printcolumn:name="STATUS",type="string",JSONPath=".status.clusterStatus.ready"
+// +kubebuilder:printcolumn:name="CLUSTER ID",type="string",JSONPath=".status.clusterId"
+// +kubebuilder:printcolumn:name="PLAN",type="string",JSONPath=".spec.planName"
+// +kubebuilder:printcolumn:name="CHANNEL",type="string",JSONPath=".spec.channelName"
+// +kubebuilder:printcolumn:name="GENERATION",type="string",JSONPath=".spec.generationName"
+// +kubebuilder:printcolumn:name="REGION",type="string",JSONPath=".spec.region"
 // +kubebuilder:printcolumn:name="AGE",type="date",JSONPath=".metadata.creationTimestamp"
-// +kubebuilder:resource:scope=Cluster
-type MyType struct {
+// +kubebuilder:resource:scope=Cluster,shortName=zb
+type ZeebeCluster struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   MyTypeSpec   `json:"spec"`
-	Status MyTypeStatus `json:"status,omitempty"`
+	Spec   ZeebeClusterSpec   `json:"spec"`
+	Status ZeebeClusterStatus `json:"status,omitempty"`
 }
 
 // +kubebuilder:object:root=true
-
-// MyTypeList contains a list of MyType
-type MyTypeList struct {
+// ZeebeClusterList contains a list of ZeebeClusters
+type ZeebeClusterList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []MyType `json:"items"`
+	Items           []ZeebeCluster `json:"items"`
 }

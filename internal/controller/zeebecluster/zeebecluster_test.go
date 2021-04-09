@@ -14,10 +14,11 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package mytype
+package zeebecluster
 
 import (
 	"context"
+	cc "github.com/camunda-community-hub/camunda-cloud-go-client/pkg/cc/client"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -61,7 +62,7 @@ func TestObserve(t *testing.T) {
 
 	for name, tc := range cases {
 		t.Run(name, func(t *testing.T) {
-			e := external{service: tc.fields.service}
+			e := external{service: cc.CCClient{}}
 			got, err := e.Observe(tc.args.ctx, tc.args.mg)
 			if diff := cmp.Diff(tc.want.err, err, test.EquateErrors()); diff != "" {
 				t.Errorf("\n%s\ne.Observe(...): -want error, +got error:\n%s\n", tc.reason, diff)

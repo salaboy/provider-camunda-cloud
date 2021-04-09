@@ -14,13 +14,18 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package mytype
+package zeebecluster
 
 import (
 	"context"
 	"fmt"
 	cc "github.com/camunda-community-hub/camunda-cloud-go-client/pkg/cc/client"
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
+	"github.com/crossplane/crossplane-runtime/pkg/event"
+	"github.com/crossplane/crossplane-runtime/pkg/logging"
+	"github.com/crossplane/crossplane-runtime/pkg/ratelimiter"
+	"github.com/crossplane/crossplane-runtime/pkg/reconciler/managed"
+	"github.com/crossplane/crossplane-runtime/pkg/resource"
 	"github.com/pkg/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/json"
@@ -29,14 +34,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 
-	"github.com/crossplane/crossplane-runtime/pkg/event"
-	"github.com/crossplane/crossplane-runtime/pkg/logging"
-	"github.com/crossplane/crossplane-runtime/pkg/ratelimiter"
-	"github.com/crossplane/crossplane-runtime/pkg/reconciler/managed"
-	"github.com/crossplane/crossplane-runtime/pkg/resource"
-
-	"github.com/crossplane/provider-template/apis/sample/v1alpha1"
-	apisv1alpha1 "github.com/crossplane/provider-template/apis/v1alpha1"
+	"github.com/salaboy/provider-camunda-cloud/apis/cc/v1alpha1"
+	apisv1alpha1 "github.com/salaboy/provider-camunda-cloud/apis/v1alpha1"
 )
 
 const (
@@ -64,25 +63,25 @@ var (
 
 // Setup adds a controller that reconciles MyType managed resources.
 func Setup(mgr ctrl.Manager, l logging.Logger, rl workqueue.RateLimiter) error {
-	name := managed.ControllerName(v1alpha1.MyTypeGroupKind)
+	name := managed.ControllerName(v1alpha1.ZeebeClusterGroupKind)
 
 	o := controller.Options{
 		RateLimiter: ratelimiter.NewDefaultManagedRateLimiter(rl),
 	}
 
 	r := managed.NewReconciler(mgr,
-		resource.ManagedKind(v1alpha1.MyTypeGroupVersionKind),
+		resource.ManagedKind(v1alpha1.ZeebeClusterGroupVersionKind),
 		managed.WithExternalConnecter(&connector{
 			kube:         mgr.GetClient(),
 			usage:        resource.NewProviderConfigUsageTracker(mgr.GetClient(), &apisv1alpha1.ProviderConfigUsage{}),
-			newServiceFn: newCCService}),
+		}),
 		managed.WithLogger(l.WithValues("controller", name)),
 		managed.WithRecorder(event.NewAPIRecorder(mgr.GetEventRecorderFor(name))))
 
 	return ctrl.NewControllerManagedBy(mgr).
 		Named(name).
 		WithOptions(o).
-		For(&v1alpha1.MyType{}).
+		For(&v1alpha1.ZeebeCluster{}).
 		Complete(r)
 }
 
@@ -91,7 +90,6 @@ func Setup(mgr ctrl.Manager, l logging.Logger, rl workqueue.RateLimiter) error {
 type connector struct {
 	kube         client.Client
 	usage        resource.Tracker
-	newServiceFn func(creds []byte) (interface{}, error)
 }
 
 // Connect typically produces an ExternalClient by:
@@ -100,7 +98,7 @@ type connector struct {
 // 3. Getting the credentials specified by the ProviderConfig.
 // 4. Using the credentials to form a client.
 func (c *connector) Connect(ctx context.Context, mg resource.Managed) (managed.ExternalClient, error) {
-	cr, ok := mg.(*v1alpha1.MyType)
+	cr, ok := mg.(*v1alpha1.ZeebeCluster)
 	if !ok {
 		return nil, errors.New(errNotMyType)
 	}
@@ -127,8 +125,8 @@ func (c *connector) Connect(ctx context.Context, mg resource.Managed) (managed.E
 		return nil, errors.Wrap(err, errGetCreds)
 	}
 
-	var ccClient = cc.CCClient{}
-	var logged, _ = ccClient.Login(credentials.CCClientId, credentials.CCSecretId)
+	var svc = cc.CCClient{}
+	var logged, _ = svc.Login(credentials.CCClientId, credentials.CCSecretId)
 
 	if logged{
 		fmt.Printf("logged in!\n")
@@ -140,7 +138,7 @@ func (c *connector) Connect(ctx context.Context, mg resource.Managed) (managed.E
 		return nil, errors.Wrap(err, errNewClient)
 	}
 
-	return &external{ccClient: ccClient}, nil
+	return &external{service: svc}, nil
 }
 
 // An ExternalClient observes, then either creates, updates, or deletes an
@@ -148,11 +146,11 @@ func (c *connector) Connect(ctx context.Context, mg resource.Managed) (managed.E
 type external struct {
 	// A 'client' used to connect to the external resource API. In practice this
 	// would be something like an AWS SDK client.
-	ccClient cc.CCClient
+	service cc.CCClient
 }
 
-func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.ExternalObservation, error) {
-	cr, ok := mg.(*v1alpha1.MyType)
+func (e *external) Observe(ctx context.Context, mg resource.Managed) (managed.ExternalObservation, error) {
+	cr, ok := mg.(*v1alpha1.ZeebeCluster)
 	if !ok {
 		return managed.ExternalObservation{}, errors.New(errNotMyType)
 	}
@@ -162,7 +160,7 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 
 
 	fmt.Printf("Querying for Cluster Name: %s\n", cr.Name)
-	existing, err := c.ccClient.GetClusterByName(cr.Name)
+	existing, err := e.service.GetClusterByName(cr.Name)
 
 	fmt.Printf("Existing Cluster ID: %s\n", existing.ID)
 	//if database.IsNotFound(err) {
@@ -172,13 +170,29 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 	if existing.ID == "" && cr.Status.ClusterId == "" {
 		return managed.ExternalObservation{ResourceExists: false, ResourceUpToDate: true, ConnectionDetails: managed.ConnectionDetails{}}, nil
 	} else {
+
+		if cr.Spec.PlanName != existing.ClusterPlantType.Name{
+			cr.Spec.PlanName = existing.ClusterPlantType.Name
+		}
+
+		if cr.Spec.GenerationName != existing.Generation.Name{
+			cr.Spec.GenerationName = existing.Generation.Name
+		}
+
+		if cr.Spec.ChannelName != existing.Channel.Name {
+			cr.Spec.ChannelName = existing.Channel.Name
+		}
+		if cr.Spec.Region != existing.K8sContext.Name{
+			cr.Spec.Region = existing.K8sContext.Name
+		}
+
 		cr.Status.ClusterId = existing.ID
-		details, err := c.ccClient.GetClusterDetails(existing.ID)
+		clusterStatus, err := e.service.GetClusterDetails(existing.ID)
 		if err != nil {
 			cr.SetConditions(xpv1.Unavailable())
 			return managed.ExternalObservation{ResourceExists: true, ResourceUpToDate: false, ConnectionDetails: managed.ConnectionDetails{}}, nil
 		}
-		cr.Status.ClusterStatus = details
+		cr.Status.ClusterStatus = clusterStatus
 		fmt.Printf("CLUSTER STATUS: %s\n", cr.Status.ClusterStatus.Ready)
 		switch cr.Status.ClusterStatus.Ready {
 		case "Healthy":
@@ -205,10 +219,6 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 		}, nil
 	}
 
-
-
-
-
 	return managed.ExternalObservation{
 		// Return false when the external resource does not exist. This lets
 		// the managed resource reconciler know that it needs to call Create to
@@ -226,17 +236,17 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 	}, nil
 }
 
-func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.ExternalCreation, error) {
-	cr, ok := mg.(*v1alpha1.MyType)
+func (e *external) Create(ctx context.Context, mg resource.Managed) (managed.ExternalCreation, error) {
+	cr, ok := mg.(*v1alpha1.ZeebeCluster)
 	if !ok {
 		return managed.ExternalCreation{}, errors.New(errNotMyType)
 	}
 
 	fmt.Printf("Creating: %+v\n", cr)
 
-	c.ccClient.GetClusterParams()
+	e.service.GetClusterParams()
 
-	clusterId, err := c.ccClient.CreateClusterWithParams(mg.GetName(), cr.Spec.PlanName,
+	clusterId, err := e.service.CreateClusterWithParams(mg.GetName(), cr.Spec.PlanName,
 		cr.Spec.ChannelName, cr.Spec.GenerationName, cr.Spec.Region)
 	if err != nil {
 		fmt.Errorf("failed to create zeebe cluster %s\n", err.Error())
@@ -255,8 +265,8 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 	}, nil
 }
 
-func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.ExternalUpdate, error) {
-	cr, ok := mg.(*v1alpha1.MyType)
+func (e *external) Update(ctx context.Context, mg resource.Managed) (managed.ExternalUpdate, error) {
+	cr, ok := mg.(*v1alpha1.ZeebeCluster)
 	if !ok {
 		return managed.ExternalUpdate{}, errors.New(errNotMyType)
 	}
@@ -270,15 +280,15 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 	}, nil
 }
 
-func (c *external) Delete(ctx context.Context, mg resource.Managed) error {
-	cr, ok := mg.(*v1alpha1.MyType)
+func (e *external) Delete(ctx context.Context, mg resource.Managed) error {
+	cr, ok := mg.(*v1alpha1.ZeebeCluster)
 	if !ok {
 		return errors.New(errNotMyType)
 	}
 
 	fmt.Printf("Deleting: %+v", cr)
 
-	deleted, err := c.ccClient.DeleteCluster(cr.Status.ClusterId)
+	deleted, err := e.service.DeleteCluster(cr.Status.ClusterId)
 	if err != nil {
 		fmt.Printf("Failed to delete cluster: cluster not found %s", err)
 	}

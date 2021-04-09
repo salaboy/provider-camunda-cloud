@@ -1,0 +1,10 @@
+apiVersion: cc.camunda.crossplane.io/v1alpha1
+kind: ZeebeCluster
+metadata:
+  name: example
+spec:
+  planName: "Development"
+  channelName: "Stable"
+  region: "Europe West 1D"
+  forProvider:
+    configurableField: ""

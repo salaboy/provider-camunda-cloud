@@ -4,19 +4,36 @@ metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.3.0
   creationTimestamp: null
-  name: mytypes.sample.template.crossplane.io
+  name: zeebeclusters.cc.camunda.crossplane.io
 spec:
-  group: sample.template.crossplane.io
+  group: cc.camunda.crossplane.io
   names:
-    kind: MyType
-    listKind: MyTypeList
-    plural: mytypes
-    singular: mytype
+    kind: ZeebeCluster
+    listKind: ZeebeClusterList
+    plural: zeebeclusters
+    shortNames:
+    - zb
+    singular: zeebecluster
   scope: Cluster
   versions:
   - additionalPrinterColumns:
     - jsonPath: .status.clusterStatus.ready
       name: STATUS
+      type: string
+    - jsonPath: .status.clusterId
+      name: CLUSTER ID
+      type: string
+    - jsonPath: .spec.planName
+      name: PLAN
+      type: string
+    - jsonPath: .spec.channelName
+      name: CHANNEL
+      type: string
+    - jsonPath: .spec.generationName
+      name: GENERATION
+      type: string
+    - jsonPath: .spec.region
+      name: REGION
       type: string
     - jsonPath: .metadata.creationTimestamp
       name: AGE
@@ -24,7 +41,8 @@ spec:
     name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: A MyType is an example API type
+        description: A ZeebeCluster is a remote ZeebeCluster in Camunda Cloud API
+          type
         properties:
           apiVersion:
             description: 'APIVersion defines the versioned schema of this representation
@@ -39,7 +57,7 @@ spec:
           metadata:
             type: object
           spec:
-            description: A MyTypeSpec defines the desired state of a MyType.
+            description: A ZeebeClusterSpec defines the desired state of a ZeebeCluster.
             properties:
               channelName:
                 type: string
@@ -109,7 +127,7 @@ spec:
             - forProvider
             type: object
           status:
-            description: A MyTypeStatus represents the observed state of a MyType.
+            description: A ZeebeClusterStatus represents the observed state of a ZeebeCluster.
             properties:
               atProvider:
                 description: MyTypeObservation are the observable fields of a MyType.

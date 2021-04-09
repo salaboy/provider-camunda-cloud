@@ -1,4 +1,4 @@
-apiVersion: template.crossplane.io/v1alpha1
+apiVersion: camunda.crossplane.io/v1alpha1
 kind: ProviderConfig
 metadata:
   name: default

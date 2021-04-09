@@ -2,19 +2,19 @@ apiVersion: v1
 kind: Secret
 metadata:
   namespace: crossplane-system
-  name: example-provider-secret
+  name: camunda-cloud-provider-secret
 type: Opaque
 data:
-  # credentials: BASE64ENCODED_PROVIDER_CREDS
+  # credentials: BASE64ENCODED_PROVIDER_CREDS in the format of: { "cc-client-id": "asd", "cc-client-secret": "123"}
 ---
-apiVersion: template.crossplane.io/v1alpha1
+apiVersion: camunda.crossplane.io/v1alpha1
 kind: ProviderConfig
 metadata:
-  name: example
+  name: camunda-cloud
 spec:
   credentials:
     source: Secret
     secretRef:
       namespace: crossplane-system
-      name: example-provider-secret
+      name: camunda-cloud-provider-secret
       key: credentials

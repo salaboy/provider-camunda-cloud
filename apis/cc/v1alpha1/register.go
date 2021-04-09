@@ -25,7 +25,7 @@ import (
 
 // Package type metadata.
 const (
-	Group   = "sample.template.crossplane.io"
+	Group   = "cc.camunda.crossplane.io"
 	Version = "v1alpha1"
 )
 
@@ -39,12 +39,12 @@ var (
 
 // MyType type metadata.
 var (
-	MyTypeKind             = reflect.TypeOf(MyType{}).Name()
-	MyTypeGroupKind        = schema.GroupKind{Group: Group, Kind: MyTypeKind}.String()
-	MyTypeKindAPIVersion   = MyTypeKind + "." + SchemeGroupVersion.String()
-	MyTypeGroupVersionKind = SchemeGroupVersion.WithKind(MyTypeKind)
+	ZeebeClusterKind             = reflect.TypeOf(ZeebeCluster{}).Name()
+	ZeebeClusterGroupKind        = schema.GroupKind{Group: Group, Kind: ZeebeClusterKind}.String()
+	ZeebeClusterKindAPIVersion   = ZeebeClusterKind + "." + SchemeGroupVersion.String()
+	ZeebeClusterGroupVersionKind = SchemeGroupVersion.WithKind(ZeebeClusterKind)
 )
 
 func init() {
-	SchemeBuilder.Register(&MyType{}, &MyTypeList{})
+	SchemeBuilder.Register(&ZeebeCluster{}, &ZeebeClusterList{})
 }
