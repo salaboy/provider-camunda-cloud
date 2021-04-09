@@ -52,14 +52,6 @@ type CCCredentials struct{
 	CCSecretId string `json:"ccSecretId"`
 }
 
-// A NoOpService does nothing.
-type CCService struct{
-}
-
-var (
-	newCCService = func(_ []byte) (interface{}, error) { return &CCService{}, nil }
-)
-
 
 // Setup adds a controller that reconciles MyType managed resources.
 func Setup(mgr ctrl.Manager, l logging.Logger, rl workqueue.RateLimiter) error {
@@ -167,34 +159,34 @@ func (e *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 	if err != nil {
 		return managed.ExternalObservation{ResourceExists: false}, err
 	}
-	if existing.ID == "" && cr.Status.ClusterId == "" {
+	if existing.ID == "" && cr.Status.AtProvider.ClusterId == "" {
 		return managed.ExternalObservation{ResourceExists: false, ResourceUpToDate: true, ConnectionDetails: managed.ConnectionDetails{}}, nil
 	} else {
 
-		if cr.Spec.PlanName != existing.ClusterPlantType.Name{
-			cr.Spec.PlanName = existing.ClusterPlantType.Name
+		if cr.Spec.ForProvider.PlanName != existing.ClusterPlantType.Name{
+			cr.Spec.ForProvider.PlanName = existing.ClusterPlantType.Name
 		}
 
-		if cr.Spec.GenerationName != existing.Generation.Name{
-			cr.Spec.GenerationName = existing.Generation.Name
+		if cr.Spec.ForProvider.GenerationName != existing.Generation.Name{
+			cr.Spec.ForProvider.GenerationName = existing.Generation.Name
 		}
 
-		if cr.Spec.ChannelName != existing.Channel.Name {
-			cr.Spec.ChannelName = existing.Channel.Name
+		if cr.Spec.ForProvider.ChannelName != existing.Channel.Name {
+			cr.Spec.ForProvider.ChannelName = existing.Channel.Name
 		}
-		if cr.Spec.Region != existing.K8sContext.Name{
-			cr.Spec.Region = existing.K8sContext.Name
+		if cr.Spec.ForProvider.Region != existing.K8sContext.Name{
+			cr.Spec.ForProvider.Region = existing.K8sContext.Name
 		}
 
-		cr.Status.ClusterId = existing.ID
+		cr.Status.AtProvider.ClusterId = existing.ID
 		clusterStatus, err := e.service.GetClusterDetails(existing.ID)
 		if err != nil {
 			cr.SetConditions(xpv1.Unavailable())
 			return managed.ExternalObservation{ResourceExists: true, ResourceUpToDate: false, ConnectionDetails: managed.ConnectionDetails{}}, nil
 		}
-		cr.Status.ClusterStatus = clusterStatus
-		fmt.Printf("CLUSTER STATUS: %s\n", cr.Status.ClusterStatus.Ready)
-		switch cr.Status.ClusterStatus.Ready {
+		cr.Status.AtProvider.ClusterStatus = clusterStatus
+		fmt.Printf("CLUSTER STATUS: %s\n", cr.Status.AtProvider.ClusterStatus.Ready)
+		switch cr.Status.AtProvider.ClusterStatus.Ready {
 		case "Healthy":
 			cr.SetConditions(xpv1.Available())
 		case "Creating":
@@ -246,15 +238,15 @@ func (e *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 
 	e.service.GetClusterParams()
 
-	clusterId, err := e.service.CreateClusterWithParams(mg.GetName(), cr.Spec.PlanName,
-		cr.Spec.ChannelName, cr.Spec.GenerationName, cr.Spec.Region)
+	clusterId, err := e.service.CreateClusterWithParams(mg.GetName(), cr.Spec.ForProvider.PlanName,
+		cr.Spec.ForProvider.ChannelName, cr.Spec.ForProvider.GenerationName, cr.Spec.ForProvider.Region)
 	if err != nil {
 		fmt.Errorf("failed to create zeebe cluster %s\n", err.Error())
 		return managed.ExternalCreation{}, err
 	}
 	fmt.Printf("Updating Zeebe Cluster with ClusterId: %s\n", clusterId)
 
-	cr.Status.ClusterId = clusterId
+	cr.Status.AtProvider.ClusterId = clusterId
 
 	cr.SetConditions(xpv1.Creating())
 
@@ -288,12 +280,12 @@ func (e *external) Delete(ctx context.Context, mg resource.Managed) error {
 
 	fmt.Printf("Deleting: %+v", cr)
 
-	deleted, err := e.service.DeleteCluster(cr.Status.ClusterId)
+	deleted, err := e.service.DeleteCluster(cr.Status.AtProvider.ClusterId)
 	if err != nil {
 		fmt.Printf("Failed to delete cluster: cluster not found %s", err)
 	}
 	if deleted {
-		fmt.Printf("Cluster in camunda cloud deleted: %s ", cr.Status.ClusterId)
+		fmt.Printf("Cluster in camunda cloud deleted: %s ", cr.Status.AtProvider.ClusterId)
 	}
 
 	return nil

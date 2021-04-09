@@ -23,20 +23,8 @@ import (
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 )
 
-// MyTypeParameters are the configurable fields of a MyType.
-type MyTypeParameters struct {
-	ConfigurableField string `json:"configurableField"`
-}
-
-// MyTypeObservation are the observable fields of a MyType.
-type MyTypeObservation struct {
-	ObservableField string `json:"observableField,omitempty"`
-}
-
-// A ZeebeClusterSpec defines the desired state of a ZeebeCluster.
-type ZeebeClusterSpec struct {
-	xpv1.ResourceSpec `json:",inline"`
-	ForProvider       MyTypeParameters `json:"forProvider"`
+// ZeebeClusterParameters are the configurable fields of a ZeebeCluster.
+type ZeebeClusterParameters struct {
 	// +kubebuilder:validation:Optional
 	Region string `json:"region"`
 	// +kubebuilder:validation:Optional
@@ -47,23 +35,33 @@ type ZeebeClusterSpec struct {
 	PlanName string `json:"planName"`
 }
 
+// ZeebeClusterObservation are the observable fields of a ZeebeCluster.
+type ZeebeClusterObservation struct {
+	ClusterId string `json:"clusterId"`
+	ClusterStatus cc.ClusterStatus `json:"clusterStatus"`
+}
+
+// A ZeebeClusterSpec defines the desired state of a ZeebeCluster.
+type ZeebeClusterSpec struct {
+	xpv1.ResourceSpec `json:",inline"`
+	ForProvider       ZeebeClusterParameters `json:"forProvider"`
+}
+
 // A ZeebeClusterStatus represents the observed state of a ZeebeCluster.
 type ZeebeClusterStatus struct {
 	xpv1.ResourceStatus `json:",inline"`
-	AtProvider          MyTypeObservation `json:"atProvider,omitempty"`
-	ClusterId string `json:"clusterId"`
-	ClusterStatus cc.ClusterStatus `json:"clusterStatus"`
+	AtProvider          ZeebeClusterObservation `json:"atProvider,omitempty"`
 }
 
 // +kubebuilder:object:root=true
 // A ZeebeCluster is a remote ZeebeCluster in Camunda Cloud API type
 // +kubebuilder:subresource:status
-// +kubebuilder:printcolumn:name="STATUS",type="string",JSONPath=".status.clusterStatus.ready"
-// +kubebuilder:printcolumn:name="CLUSTER ID",type="string",JSONPath=".status.clusterId"
-// +kubebuilder:printcolumn:name="PLAN",type="string",JSONPath=".spec.planName"
-// +kubebuilder:printcolumn:name="CHANNEL",type="string",JSONPath=".spec.channelName"
-// +kubebuilder:printcolumn:name="GENERATION",type="string",JSONPath=".spec.generationName"
-// +kubebuilder:printcolumn:name="REGION",type="string",JSONPath=".spec.region"
+// +kubebuilder:printcolumn:name="STATUS",type="string",JSONPath=".status.atProvider.clusterStatus.ready"
+// +kubebuilder:printcolumn:name="CLUSTER ID",type="string",JSONPath=".status.atProvider.clusterId"
+// +kubebuilder:printcolumn:name="PLAN",type="string",JSONPath=".spec.forProvider.planName"
+// +kubebuilder:printcolumn:name="CHANNEL",type="string",JSONPath=".spec.forProvider.channelName"
+// +kubebuilder:printcolumn:name="GENERATION",type="string",JSONPath=".spec.forProvider.generationName"
+// +kubebuilder:printcolumn:name="REGION",type="string",JSONPath=".spec.forProvider.region"
 // +kubebuilder:printcolumn:name="AGE",type="date",JSONPath=".metadata.creationTimestamp"
 // +kubebuilder:resource:scope=Cluster,shortName=zb
 type ZeebeCluster struct {

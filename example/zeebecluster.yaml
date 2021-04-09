@@ -3,8 +3,7 @@ kind: ZeebeCluster
 metadata:
   name: test
 spec:
-  planName: "Development"
-  channelName: "Stable"
-  region: "Europe West 1D"
   forProvider:
-    configurableField: ""
+    planName: "Development"
+    channelName: "Stable"
+    region: "Europe West 1D"

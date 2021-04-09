@@ -17,22 +17,22 @@ spec:
   scope: Cluster
   versions:
   - additionalPrinterColumns:
-    - jsonPath: .status.clusterStatus.ready
+    - jsonPath: .status.atProvider.clusterStatus.ready
       name: STATUS
       type: string
-    - jsonPath: .status.clusterId
+    - jsonPath: .status.atProvider.clusterId
       name: CLUSTER ID
       type: string
-    - jsonPath: .spec.planName
+    - jsonPath: .spec.forProvider.planName
       name: PLAN
       type: string
-    - jsonPath: .spec.channelName
+    - jsonPath: .spec.forProvider.channelName
       name: CHANNEL
       type: string
-    - jsonPath: .spec.generationName
+    - jsonPath: .spec.forProvider.generationName
       name: GENERATION
       type: string
-    - jsonPath: .spec.region
+    - jsonPath: .spec.forProvider.region
       name: REGION
       type: string
     - jsonPath: .metadata.creationTimestamp
@@ -59,8 +59,6 @@ spec:
           spec:
             description: A ZeebeClusterSpec defines the desired state of a ZeebeCluster.
             properties:
-              channelName:
-                type: string
               deletionPolicy:
                 description: DeletionPolicy specifies what will happen to the underlying
                   external when this managed resource is deleted - either "Delete"
@@ -71,17 +69,18 @@ spec:
                 - Delete
                 type: string
               forProvider:
-                description: MyTypeParameters are the configurable fields of a MyType.
+                description: ZeebeClusterParameters are the configurable fields of
+                  a ZeebeCluster.
                 properties:
-                  configurableField:
+                  channelName:
                     type: string
-                required:
-                - configurableField
+                  generationName:
+                    type: string
+                  planName:
+                    type: string
+                  region:
+                    type: string
                 type: object
-              generationName:
-                type: string
-              planName:
-                type: string
               providerConfigRef:
                 description: ProviderConfigReference specifies how the provider that
                   will be used to create, observe, update, and delete this managed
@@ -104,8 +103,6 @@ spec:
                 required:
                 - name
                 type: object
-              region:
-                type: string
               writeConnectionSecretToRef:
                 description: WriteConnectionSecretToReference specifies the namespace
                   and name of a Secret to which any connection details for this managed
@@ -130,37 +127,39 @@ spec:
             description: A ZeebeClusterStatus represents the observed state of a ZeebeCluster.
             properties:
               atProvider:
-                description: MyTypeObservation are the observable fields of a MyType.
+                description: ZeebeClusterObservation are the observable fields of
+                  a ZeebeCluster.
                 properties:
-                  observableField:
+                  clusterId:
                     type: string
-                type: object
-              clusterId:
-                type: string
-              clusterStatus:
-                properties:
-                  operateStatus:
-                    type: string
-                  operateUrl:
-                    type: string
-                  ready:
-                    type: string
-                  tasklistStatus:
-                    type: string
-                  tasklistUrl:
-                    type: string
-                  zeebeStatus:
-                    type: string
-                  zeebeUrl:
-                    type: string
+                  clusterStatus:
+                    properties:
+                      operateStatus:
+                        type: string
+                      operateUrl:
+                        type: string
+                      ready:
+                        type: string
+                      tasklistStatus:
+                        type: string
+                      tasklistUrl:
+                        type: string
+                      zeebeStatus:
+                        type: string
+                      zeebeUrl:
+                        type: string
+                    required:
+                    - operateStatus
+                    - operateUrl
+                    - ready
+                    - tasklistStatus
+                    - tasklistUrl
+                    - zeebeStatus
+                    - zeebeUrl
+                    type: object
                 required:
-                - operateStatus
-                - operateUrl
-                - ready
-                - tasklistStatus
-                - tasklistUrl
-                - zeebeStatus
-                - zeebeUrl
+                - clusterId
+                - clusterStatus
                 type: object
               conditions:
                 description: Conditions of the resource.
@@ -195,9 +194,6 @@ spec:
                   - type
                   type: object
                 type: array
-            required:
-            - clusterId
-            - clusterStatus
             type: object
         required:
         - spec
