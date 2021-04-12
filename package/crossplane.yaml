@@ -1,0 +1,28 @@
+apiVersion: meta.pkg.crossplane.io/v1alpha1
+kind: Provider
+metadata:
+  name: provider-camunda-cloud
+  annotations:
+    company: Salaboy
+    maintainer: Salaboy <salaboy@gmail.com>
+    source: github.com/salaboy/provider-camunda-cloud
+    license: Apache-2.0
+    descriptionShort: |
+      The Camunda Cloud Provider for Crossplane allows you create Zeebe Clusters
+      hosted in your Camunda Cloud account.
+
+    description: |
+      The Camunda Cloud Provider for Crossplane allows you to declaratively create Zeebe Clusters
+            hosted in your Camunda Cloud account right from your Kubernetes Clusters.
+
+    readme: |
+      `provider-camunda-cloud` is the Crossplane infrastructure provider for the [Camunda Cloud
+       Platform ](https://accounts.cloud.camunda.io/signup).
+
+
+      If you encounter an issue please reach out and create an issue in
+      [Issues](https://github.com/salaboy/provider-camunda-cloud/issues)
+
+spec:
+  controller:
+    image: salaboy/provider-camunda-cloud-controller:v0.0.1

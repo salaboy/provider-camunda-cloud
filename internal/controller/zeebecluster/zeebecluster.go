@@ -27,6 +27,13 @@ import (
 	"github.com/crossplane/crossplane-runtime/pkg/reconciler/managed"
 	"github.com/crossplane/crossplane-runtime/pkg/resource"
 	"github.com/pkg/errors"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/exporters/trace/jaeger"
+	"go.opentelemetry.io/otel/semconv"
+	"go.opentelemetry.io/otel/trace"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	sdktraceresource "go.opentelemetry.io/otel/sdk/resource"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/json"
 	"k8s.io/client-go/util/workqueue"
@@ -90,6 +97,7 @@ type connector struct {
 // 3. Getting the credentials specified by the ProviderConfig.
 // 4. Using the credentials to form a client.
 func (c *connector) Connect(ctx context.Context, mg resource.Managed) (managed.ExternalClient, error) {
+
 	cr, ok := mg.(*v1alpha1.ZeebeCluster)
 	if !ok {
 		return nil, errors.New(errNotMyType)
@@ -118,7 +126,13 @@ func (c *connector) Connect(ctx context.Context, mg resource.Managed) (managed.E
 	}
 
 	var svc = cc.CCClient{}
-	var logged, _ = svc.Login(credentials.CCClientId, credentials.CCSecretId)
+
+	flush := svc.InitTracer()
+	defer flush()
+	var logged, _ = svc.LoginWithContext(ctx, credentials.CCClientId, credentials.CCSecretId)
+
+	flush2 := initTracer()
+	defer flush2()
 
 	if logged{
 		fmt.Printf("logged in!\n")
@@ -130,7 +144,28 @@ func (c *connector) Connect(ctx context.Context, mg resource.Managed) (managed.E
 		return nil, errors.Wrap(err, errNewClient)
 	}
 
-	return &external{service: svc}, nil
+
+	return &external{service: svc, tracer: otel.Tracer("provider-camunda-cloud")}, nil
+}
+
+func initTracer() func() {
+
+	// Create and install Jaeger export pipeline.
+	flush, err := jaeger.InstallNewPipeline(
+		jaeger.WithCollectorEndpoint("http://localhost:14268/api/traces"),
+		jaeger.WithSDKOptions(
+			sdktrace.WithSampler(sdktrace.AlwaysSample()),
+			sdktrace.WithResource(sdktraceresource.NewWithAttributes(
+				semconv.ServiceNameKey.String("provider-camunda-cloud"),
+				attribute.String("exporter", "jaeger"),
+				attribute.Float64("float", 312.23),
+			)),
+		),
+	)
+	if err != nil {
+		fmt.Errorf("Failed to initialize Tracer",err)
+	}
+	return flush
 }
 
 // An ExternalClient observes, then either creates, updates, or deletes an
@@ -139,9 +174,14 @@ type external struct {
 	// A 'client' used to connect to the external resource API. In practice this
 	// would be something like an AWS SDK client.
 	service cc.CCClient
+	tracer  trace.Tracer
 }
 
 func (e *external) Observe(ctx context.Context, mg resource.Managed) (managed.ExternalObservation, error) {
+
+	ctx, span := e.tracer.Start(ctx, "observe")
+	defer span.End()
+
 	cr, ok := mg.(*v1alpha1.ZeebeCluster)
 	if !ok {
 		return managed.ExternalObservation{}, errors.New(errNotMyType)
@@ -152,7 +192,7 @@ func (e *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 
 
 	fmt.Printf("Querying for Cluster Name: %s\n", cr.Name)
-	existing, err := e.service.GetClusterByName(cr.Name)
+	existing, err := e.service.GetClusterByNameWithContext(ctx, cr.Name)
 
 	fmt.Printf("Existing Cluster ID: %s\n", existing.ID)
 	//if database.IsNotFound(err) {
@@ -179,7 +219,7 @@ func (e *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 		}
 
 		cr.Status.AtProvider.ClusterId = existing.ID
-		clusterStatus, err := e.service.GetClusterDetails(existing.ID)
+		clusterStatus, err := e.service.GetClusterDetailsWithContext(ctx, existing.ID)
 		if err != nil {
 			cr.SetConditions(xpv1.Unavailable())
 			return managed.ExternalObservation{ResourceExists: true, ResourceUpToDate: false, ConnectionDetails: managed.ConnectionDetails{}}, nil
@@ -229,6 +269,10 @@ func (e *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 }
 
 func (e *external) Create(ctx context.Context, mg resource.Managed) (managed.ExternalCreation, error) {
+
+	ctx, span := e.tracer.Start(ctx, "create")
+	defer span.End()
+
 	cr, ok := mg.(*v1alpha1.ZeebeCluster)
 	if !ok {
 		return managed.ExternalCreation{}, errors.New(errNotMyType)
@@ -236,9 +280,9 @@ func (e *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 
 	fmt.Printf("Creating: %+v\n", cr)
 
-	e.service.GetClusterParams()
+	e.service.GetClusterParamsWithContext(ctx)
 
-	clusterId, err := e.service.CreateClusterWithParams(mg.GetName(), cr.Spec.ForProvider.PlanName,
+	clusterId, err := e.service.CreateClusterWithParamsAndContext(ctx, mg.GetName(), cr.Spec.ForProvider.PlanName,
 		cr.Spec.ForProvider.ChannelName, cr.Spec.ForProvider.GenerationName, cr.Spec.ForProvider.Region)
 	if err != nil {
 		fmt.Errorf("failed to create zeebe cluster %s\n", err.Error())
@@ -258,6 +302,9 @@ func (e *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 }
 
 func (e *external) Update(ctx context.Context, mg resource.Managed) (managed.ExternalUpdate, error) {
+	ctx, span := e.tracer.Start(ctx, "update")
+	defer span.End()
+
 	cr, ok := mg.(*v1alpha1.ZeebeCluster)
 	if !ok {
 		return managed.ExternalUpdate{}, errors.New(errNotMyType)
@@ -273,6 +320,9 @@ func (e *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 }
 
 func (e *external) Delete(ctx context.Context, mg resource.Managed) error {
+	ctx, span := e.tracer.Start(ctx, "delete")
+	defer span.End()
+
 	cr, ok := mg.(*v1alpha1.ZeebeCluster)
 	if !ok {
 		return errors.New(errNotMyType)
@@ -280,7 +330,7 @@ func (e *external) Delete(ctx context.Context, mg resource.Managed) error {
 
 	fmt.Printf("Deleting: %+v", cr)
 
-	deleted, err := e.service.DeleteCluster(cr.Status.AtProvider.ClusterId)
+	deleted, err := e.service.DeleteClusterWithContext(ctx, cr.Status.AtProvider.ClusterId)
 	if err != nil {
 		fmt.Printf("Failed to delete cluster: cluster not found %s", err)
 	}

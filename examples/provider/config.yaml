@@ -5,7 +5,7 @@ metadata:
   name: camunda-cloud-provider-secret
 type: Opaque
 data:
-  # credentials: BASE64ENCODED_PROVIDER_CREDS in the format of: { "cc-client-id": "asd", "cc-client-secret": "123"}
+  # credentials: BASE64ENCODED_PROVIDER_CREDS in the format of: { "ccClientId": "asd", "ccSecretId": "123"}
 ---
 apiVersion: camunda.crossplane.io/v1alpha1
 kind: ProviderConfig
