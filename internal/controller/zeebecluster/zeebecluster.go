@@ -163,7 +163,7 @@ func initTracer() func() {
 		),
 	)
 	if err != nil {
-		fmt.Errorf("Failed to initialize Tracer",err)
+		fmt.Printf("Failed to initialize Tracer %s",err)
 	}
 	return flush
 }

@@ -12,7 +12,7 @@ image: generate test
 	docker build . -t $(ORG_NAME)/$(PROVIDER_NAME)-controller:v0.0.1 -f cluster/Dockerfile
 
 image-push:
-	docker push $(ORG_NAME)/$(PROVIDER_NAME)-controllerpwd:v0.0.1
+	docker push $(ORG_NAME)/$(PROVIDER_NAME)-controller:v0.0.1
 
 run: generate
 	kubectl apply -f package/crds/ -R
